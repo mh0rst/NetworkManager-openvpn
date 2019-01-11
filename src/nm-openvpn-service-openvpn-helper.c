@@ -765,8 +765,25 @@ main (int argc, char *argv[])
 		ip6config = NULL;
 	}
 
-	if (!ip4config && !ip6config)
-		helper_failed (proxy, "IPv4 or IPv6 configuration");
+	if (!ip4config && !ip6config) {
+		if(tapdev) {
+			g_variant_builder_init (&ip4builder, G_VARIANT_TYPE_VARDICT);
+			// Add dummy ipv4
+			val = addr4_to_gvariant ("10.254.254.254");
+			if (val) {
+				g_variant_builder_add (&ip4builder, "{sv}", NM_VPN_PLUGIN_IP4_CONFIG_ADDRESS, val);
+			}
+			val = g_variant_new_uint32 (32);
+			if (val) {
+				g_variant_builder_add (&ip4builder, "{sv}", NM_VPN_PLUGIN_IP4_CONFIG_PREFIX, val);
+			}
+			ip4config = g_variant_builder_end (&ip4builder);
+			val = g_variant_new_boolean (TRUE);
+			g_variant_builder_add (&builder, "{sv}", NM_VPN_PLUGIN_CONFIG_HAS_IP4, val);
+		} else {
+			helper_failed (proxy, "IPv4 or IPv6 configuration");
+		}
+	}
 
 	/* Send the config info to nm-openvpn-service */
 	send_config (proxy, g_variant_builder_end (&builder), ip4config, ip6config);
